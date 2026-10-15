@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Keep the holographic studio on a client-only index route using React Three Fiber; WebGL must never render on the server.
+- Strip DOM-only data-* metadata through scene wrappers before forwarding props to R3F intrinsics and drei helpers; editor source tagging otherwise becomes invalid Three.js pierced properties.
 - Use the external-store avatar controller for both UI and browser commands; one validated command interface keeps animation state synchronized.
 - Animate the CC0 rigged humanoid through its skeleton and extend its PBR material with holographic shaders; sourced anatomy and GPU skinning keep gestures natural.
 - Store all scene and UI colors as semantic CSS tokens; resolve CSS color values before passing them to Three.js.
