@@ -68,6 +68,8 @@ function Humanoid({ colors }: { colors: Palette }) {
   const time = useRef(0);
   const rotation = useMemo(() => new THREE.Quaternion(), []);
   const euler = useMemo(() => new THREE.Euler(), []);
+  const tintTargets = useMemo(() => ({ idle: new THREE.Color(colors.violet), thinking: new THREE.Color(colors.violet), listening: new THREE.Color(colors.cyan), speaking: new THREE.Color(colors.highlight) }), [colors]);
+  const breathScale = useMemo(() => new THREE.Vector3(), []);
   useLayoutEffect(() => {
     const found: Record<string, THREE.Object3D> = {};
     data.object.traverse(item => { if (item instanceof THREE.Bone) found[item.name] = item; });
@@ -95,12 +97,12 @@ function Humanoid({ colors }: { colors: Palette }) {
     data.uniforms.time.value = t;
     data.uniforms.scan.value = s.scanlines ? 1 : 0;
     data.uniforms.glow.value = .3 + s.glow / 65 + (s.state === 'thinking' ? Math.sin(t * 5) * .2 : 0);
-    data.uniforms.tint.value.lerp(new THREE.Color(s.state === 'listening' ? colors.cyan : s.state === 'speaking' ? colors.highlight : colors.violet), 1 - Math.exp(-3 * dt));
+    data.uniforms.tint.value.lerp(tintTargets[s.state], 1 - Math.exp(-3 * dt));
     const b = bones.current;
     const amp = s.amplitude / 50;
-    if (b['Torso']) { const breath = s.breathing ? Math.sin(t * 1.8) * .013 * amp : 0; b['Torso'].scale.multiply(new THREE.Vector3(1 + breath, 1 + breath * .3, 1 + breath * 1.4)); }
+    if (b['Torso']) { const breath = s.breathing ? Math.sin(t * 1.8) * .013 * amp : 0; b['Torso'].scale.multiply(breathScale.set(1 + breath, 1 + breath * .3, 1 + breath * 1.4)); }
     if (b['Head']) {
-      euler.set(s.headMovement ? Math.sin(t * .6) * .045 * amp : 0, s.headMovement ? Math.sin(t * .36) * .13 * amp : 0, s.emotion === 'curious' ? .18 : s.headMovement ? Math.sin(t * .45) * .035 * amp : 0);
+      euler.set((s.headMovement ? Math.sin(t * .6) * .045 * amp : 0) + (s.emotion === 'focused' ? .12 : s.emotion === 'happy' ? -.08 : 0), s.headMovement ? Math.sin(t * .36) * .13 * amp : 0, s.emotion === 'curious' ? .18 : s.headMovement ? Math.sin(t * .45) * .035 * amp : 0);
       b['Head'].quaternion.multiply(rotation.setFromEuler(euler));
     }
     if (seenGesture.current !== s.gestureId) { seenGesture.current = s.gestureId; gestureTime.current = 0; }
@@ -122,7 +124,10 @@ function Humanoid({ colors }: { colors: Palette }) {
     if (seenBlink.current !== s.blinkId) { seenBlink.current = s.blinkId; blinkTime.current = 0; }
     blinkTime.current += dt;
     if (s.blinking && blinkTime.current > 3.6 + Math.sin(t) * .7) blinkTime.current = 0;
-    if (eyes.current) eyes.current.scale.y = blinkTime.current < .2 ? Math.max(.06, Math.abs(Math.cos(blinkTime.current / .2 * Math.PI))) : 1;
+    if (eyes.current) {
+      eyes.current.scale.y = (blinkTime.current < .2 ? Math.max(.06, Math.abs(Math.cos(blinkTime.current / .2 * Math.PI))) : 1) * (s.emotion === 'happy' ? 1.7 : s.emotion === 'focused' ? .55 : 1);
+      eyes.current.scale.x = s.emotion === 'happy' ? 1.12 : 1;
+    }
     if (group.current) { group.current.position.y = Math.sin(t * 1.2) * .014; if (s.rotation) group.current.rotation.y += dt * .24; }
   });
   return <group ref={group}><primitive object={data.object} /></group>;
