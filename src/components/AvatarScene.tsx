@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useMemo, useRef, useLayoutEffect, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Suspense, useEffect, useMemo, useRef, useLayoutEffect, useState, createElement, type ComponentProps } from 'react';
+import { Canvas, useFrame, type ThreeElements } from '@react-three/fiber';
 import { Environment, Lightformer, OrbitControls, Grid, useGLTF } from '@react-three/drei';
 import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -7,6 +7,35 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
 import asset from '@/assets/avatar.asset.json';
 import { avatarStore, useAvatar } from '@/lib/avatar-controller';
+import { cleanSceneProps } from '@/lib/scene-props';
+
+// Capitalized boundaries absorb editor-injected DOM metadata. createElement
+// keeps intrinsic WebGL objects out of JSX source-tag instrumentation.
+function sceneElement<T extends keyof ThreeElements>(tag: T) {
+  return function SceneElement(props: ThreeElements[T]) {
+    return createElement(tag, cleanSceneProps(props));
+  };
+}
+const SceneGroup = sceneElement('group');
+const ScenePrimitive = sceneElement('primitive');
+const ScenePoints = sceneElement('points');
+const SceneBufferGeometry = sceneElement('bufferGeometry');
+const SceneBufferAttribute = sceneElement('bufferAttribute');
+const ScenePointsMaterial = sceneElement('pointsMaterial');
+const SceneMesh = sceneElement('mesh');
+const SceneTorusGeometry = sceneElement('torusGeometry');
+const SceneBasicMaterial = sceneElement('meshBasicMaterial');
+const SceneCylinderGeometry = sceneElement('cylinderGeometry');
+const SceneStandardMaterial = sceneElement('meshStandardMaterial');
+const SceneColor = sceneElement('color');
+const SceneAmbientLight = sceneElement('ambientLight');
+const SceneDirectionalLight = sceneElement('directionalLight');
+const ScenePointLight = sceneElement('pointLight');
+function SceneGrid(props: ComponentProps<typeof Grid>) { return createElement(Grid, cleanSceneProps(props)); }
+function SceneOrbitControls(props: ComponentProps<typeof OrbitControls>) { return createElement(OrbitControls, cleanSceneProps(props)); }
+function SceneEnvironment(props: ComponentProps<typeof Environment>) { return createElement(Environment, cleanSceneProps(props)); }
+function SceneLightformer(props: ComponentProps<typeof Lightformer>) { return createElement(Lightformer, cleanSceneProps(props)); }
+
 
 function token(name: string) {
   const css = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -130,7 +159,7 @@ function Humanoid({ colors }: { colors: Palette }) {
     }
     if (group.current) { group.current.position.y = Math.sin(t * 1.2) * .014; if (s.rotation) group.current.rotation.y += dt * .24; }
   });
-  return <group ref={group}><primitive object={data.object} /></group>;
+  return <SceneGroup ref={group}><ScenePrimitive object={data.object} /></SceneGroup>;
 }
 
 function Energy({ colors }: { colors: Palette }) {
@@ -149,10 +178,10 @@ function Energy({ colors }: { colors: Palette }) {
     if (rings.current) { rings.current.rotation.y += dt * .08; rings.current.children.forEach((ring, i) => { const scale = 1 + Math.sin(time.current * (s.state === 'idle' ? 1 : 3) + i) * (s.state === 'idle' ? .015 : .09); ring.scale.setScalar(scale); }); }
   });
   return <>
-    <points ref={points}><bufferGeometry><bufferAttribute attach="attributes-position" args={[coords.slice(), 3]} /></bufferGeometry><pointsMaterial color={colors.highlight} size={.018} transparent opacity={.75} sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} /></points>
-    <group ref={rings}>{[1.12, 1.4, 1.72].map((r, i) => <mesh key={r} position-y={.09 - i * .013} rotation-x={-Math.PI / 2}><torusGeometry args={[r, i === 0 ? .013 : .005, 8, 120]} /><meshBasicMaterial color={i === 1 ? colors.cyan : colors.violet} transparent opacity={i === 0 ? .85 : .3} toneMapped={false} /></mesh>)}</group>
-    <mesh position-y={-.04}><cylinderGeometry args={[1.15, 1.22, .13, 80]} /><meshStandardMaterial color={colors.metal} roughness={.3} metalness={.8} /></mesh>
-    <Grid position={[0, -.12, 0]} args={[30, 30]} cellSize={.55} sectionSize={2.75} cellColor={colors.grid} sectionColor={colors.grid} cellThickness={.45} sectionThickness={.8} fadeDistance={13} fadeStrength={2.5} infiniteGrid />
+    <ScenePoints ref={points}><SceneBufferGeometry><SceneBufferAttribute attach="attributes-position" args={[coords.slice(), 3]} /></SceneBufferGeometry><ScenePointsMaterial color={colors.highlight} size={.018} transparent opacity={.75} sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} /></ScenePoints>
+    <SceneGroup ref={rings}>{[1.12, 1.4, 1.72].map((r, i) => <SceneMesh key={r} position-y={.09 - i * .013} rotation-x={-Math.PI / 2}><SceneTorusGeometry args={[r, i === 0 ? .013 : .005, 8, 120]} /><SceneBasicMaterial color={i === 1 ? colors.cyan : colors.violet} transparent opacity={i === 0 ? .85 : .3} toneMapped={false} /></SceneMesh>)}</SceneGroup>
+    <SceneMesh position-y={-.04}><SceneCylinderGeometry args={[1.15, 1.22, .13, 80]} /><SceneStandardMaterial color={colors.metal} roughness={.3} metalness={.8} /></SceneMesh>
+    <SceneGrid position={[0, -.12, 0]} args={[30, 30]} cellSize={.55} sectionSize={2.75} cellColor={colors.grid} sectionColor={colors.grid} cellThickness={.45} sectionThickness={.8} fadeDistance={13} fadeStrength={2.5} infiniteGrid />
   </>;
 }
 
@@ -160,7 +189,7 @@ function CameraControls() {
   const controls = useRef<OrbitControlsType>(null);
   const s = useAvatar();
   useEffect(() => { if (controls.current && s.cameraReset > 0) { controls.current.object.position.set(0, 2.1, 7.7); controls.current.target.set(0, 1.65, 0); controls.current.update(); } }, [s.cameraReset]);
-  return <OrbitControls ref={controls} makeDefault target={[0, 1.65, 0]} enablePan={false} minDistance={4.5} maxDistance={12} minPolarAngle={.45} maxPolarAngle={1.72} enableDamping dampingFactor={.08} />;
+  return <SceneOrbitControls ref={controls} makeDefault target={[0, 1.65, 0]} enablePan={false} minDistance={4.5} maxDistance={12} minPolarAngle={.45} maxPolarAngle={1.72} enableDamping dampingFactor={.08} />;
 }
 
 export function AvatarScene() {
@@ -169,11 +198,11 @@ export function AvatarScene() {
   const s = useAvatar();
   if (!colors) return null;
   return <Canvas dpr={[1, 1.5]} camera={{ position: [0, 2.1, 7.7], fov: 37 }} gl={{ antialias: true, alpha: false }}>
-    <color attach="background" args={[colors.void]} />
-    <ambientLight intensity={.65} />
-    <directionalLight position={[3, 4, 5]} intensity={2.3} color={colors.highlight} />
-    <pointLight position={[-3, 2, 2]} intensity={6} color={colors.cyan} />
-    <Environment resolution={128}><Lightformer intensity={2} position={[0, 4, 3]} scale={[8, 8, 1]} /><Lightformer intensity={1.5} color={colors.violet} position={[-4, 1, -1]} rotation-y={Math.PI / 2} scale={[8, 3, 1]} /></Environment>
+    <SceneColor attach="background" args={[colors.void]} />
+    <SceneAmbientLight intensity={.65} />
+    <SceneDirectionalLight position={[3, 4, 5]} intensity={2.3} color={colors.highlight} />
+    <ScenePointLight position={[-3, 2, 2]} intensity={6} color={colors.cyan} />
+    <SceneEnvironment resolution={128}><SceneLightformer intensity={2} position={[0, 4, 3]} scale={[8, 8, 1]} /><SceneLightformer intensity={1.5} color={colors.violet} position={[-4, 1, -1]} rotation-y={Math.PI / 2} scale={[8, 3, 1]} /></SceneEnvironment>
     <Energy colors={colors} />
     <Suspense fallback={null}><Humanoid colors={colors} /></Suspense>
     <CameraControls />
