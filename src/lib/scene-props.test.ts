@@ -7,6 +7,9 @@ describe('Editor metadata at the WebGL boundary', () => {
   it('removes source metadata before R3F applies pierced properties', () => {
     const group = new Group();
     const props = { 'data-tsd-source': 'AvatarScene.tsx:133', position: [1, 2, 3] as [number, number, number] };
+    expect(cleanSceneProps(props)).not.toHaveProperty('data-tsd-source');
+    // A pierced metadata path can become invalid after an editor update.
+    Object.assign(group, { data: null });
     expect(() => applyProps(group, props)).toThrow('Cannot set "data-tsd-source"');
     expect(() => applyProps(group, cleanSceneProps(props))).not.toThrow();
     expect(group.position.toArray()).toEqual([1, 2, 3]);
