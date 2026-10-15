@@ -1,24 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import { AvatarStudio } from '@/components/AvatarStudio';
 export const Route = createFileRoute("/")({
-  component: Index,
+  ssr: false,
+  head: () => ({ meta: [
+    { title: 'AURA — Estúdio de Avatar Holográfico' },
+    { name: 'description', content: 'Avatar holográfico 3D interativo com animações naturais, gestos, emoções e interface de eventos para IA.' },
+    { property: 'og:title', content: 'AURA — Estúdio de Avatar Holográfico' },
+    { property: 'og:description', content: 'Explore seu avatar neon em 3D. Calibre animações, emoções e estados de inteligência artificial.' },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+  ] }),
+  component: AvatarStudio,
 });
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
