@@ -59,6 +59,7 @@ function Humanoid({ colors }: { colors: Palette }) {
     return { object, material, uniforms, mixer, meshes };
   }, [scene, animations, colors]);
   const bones = useRef<Record<string, THREE.Object3D>>({});
+  const basePose = useRef(new Map<THREE.Object3D, { rotation: THREE.Quaternion; scale: THREE.Vector3 }>());
   const eyes = useRef<THREE.Group>(null);
   const gestureTime = useRef(10);
   const seenGesture = useRef(-1);
@@ -71,6 +72,8 @@ function Humanoid({ colors }: { colors: Palette }) {
     const found: Record<string, THREE.Object3D> = {};
     data.object.traverse(item => { if (item instanceof THREE.Bone) found[item.name] = item; });
     bones.current = found;
+    basePose.current.clear();
+    Object.values(found).forEach(bone => basePose.current.set(bone, { rotation: bone.quaternion.clone(), scale: bone.scale.clone() }));
     const eyeGroup = new THREE.Group();
     for (const x of [-.105, .105]) {
       const eye = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: colors.cyan, toneMapped: false }));
@@ -86,14 +89,16 @@ function Humanoid({ colors }: { colors: Palette }) {
     const dt = Math.min(rawDelta, .05) * s.speed;
     time.current += dt;
     const t = time.current;
+    basePose.current.forEach((pose, bone) => { bone.quaternion.copy(pose.rotation); bone.scale.copy(pose.scale); });
     data.mixer.update(dt * .65);
+    basePose.current.forEach((pose, bone) => { pose.rotation.copy(bone.quaternion); pose.scale.copy(bone.scale); });
     data.uniforms.time.value = t;
     data.uniforms.scan.value = s.scanlines ? 1 : 0;
     data.uniforms.glow.value = .3 + s.glow / 65 + (s.state === 'thinking' ? Math.sin(t * 5) * .2 : 0);
     data.uniforms.tint.value.lerp(new THREE.Color(s.state === 'listening' ? colors.cyan : s.state === 'speaking' ? colors.highlight : colors.violet), 1 - Math.exp(-3 * dt));
     const b = bones.current;
     const amp = s.amplitude / 50;
-    if (b['Torso']) { const breath = s.breathing ? Math.sin(t * 1.8) * .013 * amp : 0; b['Torso'].scale.set(1 + breath, 1 + breath * .3, 1 + breath * 1.4); }
+    if (b['Torso']) { const breath = s.breathing ? Math.sin(t * 1.8) * .013 * amp : 0; b['Torso'].scale.multiply(new THREE.Vector3(1 + breath, 1 + breath * .3, 1 + breath * 1.4)); }
     if (b['Head']) {
       euler.set(s.headMovement ? Math.sin(t * .6) * .045 * amp : 0, s.headMovement ? Math.sin(t * .36) * .13 * amp : 0, s.emotion === 'curious' ? .18 : s.headMovement ? Math.sin(t * .45) * .035 * amp : 0);
       b['Head'].quaternion.multiply(rotation.setFromEuler(euler));
@@ -149,7 +154,7 @@ function Energy({ colors }: { colors: Palette }) {
 function CameraControls() {
   const controls = useRef<OrbitControlsType>(null);
   const s = useAvatar();
-  useEffect(() => { if (controls.current) controls.current.reset(); }, [s.cameraReset]);
+  useEffect(() => { if (controls.current && s.cameraReset > 0) { controls.current.object.position.set(0, 2.1, 7.7); controls.current.target.set(0, 1.65, 0); controls.current.update(); } }, [s.cameraReset]);
   return <OrbitControls ref={controls} makeDefault target={[0, 1.65, 0]} enablePan={false} minDistance={4.5} maxDistance={12} minPolarAngle={.45} maxPolarAngle={1.72} enableDamping dampingFactor={.08} />;
 }
 
